@@ -85,7 +85,7 @@ button {
 button:active { transform: scale(.97); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.seg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .seg button { height: 48px; font: 700 14px/1 var(--pixel); letter-spacing: .06em; text-transform: uppercase; }
 .seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
 
@@ -129,6 +129,7 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
       <button type="button" id="m-fire" aria-pressed="true">Fire</button>
       <button type="button" id="m-water" aria-pressed="false">Water</button>
       <button type="button" id="m-rain" aria-pressed="false">Rain</button>
+      <button type="button" id="m-grass" aria-pressed="false">Grass</button>
     </div>
 
     <div class="set" id="set-fire">
@@ -163,11 +164,21 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
       <p class="note">Tap the ground to make a ripple. Slide to make more.</p>
     </div>
 
+    <div class="set" id="set-grass" hidden>
+      <div class="group"><h2>Grass color</h2><div class="swatches" id="pals-grass"></div></div>
+      <label class="slide" for="grass-wind"><span class="cap">Wind speed</span><output id="o-grass-wind">40%</output>
+        <input type="range" id="grass-wind" min="0" max="100" step="5" value="40"></label>
+      <div class="chips">
+        <button type="button" class="chip" id="grass-glow" aria-pressed="true"><span>Glow</span><i></i></button>
+      </div>
+      <p class="note">Tap the grass to send a gust through it.</p>
+    </div>
+
     <div class="chips">
       <button type="button" class="chip" id="awake" aria-pressed="false"><span>Keep screen awake</span><i></i></button>
     </div>
     <p class="note" id="msg" role="status"></p>
-    <p class="note">Version 9</p>
+    <p class="note">Version 10</p>
   </div></section>
 </main>
 
@@ -193,6 +204,11 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
       puddle: { name: "Puddle", accent: "#7fb2e0", stops: [[0, 3, 6, 14], [.2, 10, 24, 48], [.4, 26, 62, 104], [.6, 70, 130, 180], [.8, 165, 210, 235], [1, 245, 252, 255]] },
       monsoon: { name: "Monsoon", accent: "#7ccbc4", stops: [[0, 4, 8, 16], [.2, 10, 30, 50], [.4, 24, 70, 84], [.6, 60, 130, 130], [.8, 150, 200, 190], [1, 240, 252, 250]] },
       street: { name: "Streetlight", accent: "#e6b44c", stops: [[0, 8, 5, 4], [.2, 42, 24, 10], [.4, 112, 66, 18], [.6, 190, 124, 36], [.8, 245, 196, 104], [1, 255, 246, 214]] }
+    },
+    grass: {
+      meadow: { name: "Meadow", accent: "#8fcc4a", stops: [[0, 2, 8, 8], [.2, 8, 38, 18], [.4, 24, 96, 32], [.6, 88, 162, 44], [.8, 190, 220, 90], [1, 255, 250, 200]] },
+      harvest: { name: "Harvest", accent: "#e0b84c", stops: [[0, 10, 6, 4], [.2, 46, 30, 10], [.4, 112, 82, 18], [.6, 186, 146, 40], [.8, 240, 204, 100], [1, 255, 246, 210]] },
+      moonlit: { name: "Moonlit", accent: "#6fc3c0", stops: [[0, 3, 6, 18], [.2, 10, 26, 58], [.4, 20, 70, 100], [.6, 60, 140, 150], [.8, 160, 215, 210], [1, 240, 252, 255]] }
     }
   };
 
@@ -202,7 +218,8 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
     mode: "fire", awake: false,
     fire: { pal: "classic", height: 100, embers: true, glow: true },
     water: { pal: "ocean", swell: 100, drops: true, bubbles: true, glow: true },
-    rain: { pal: "puddle", amount: 100, glow: true }
+    rain: { pal: "puddle", amount: 100, glow: true },
+    grass: { pal: "meadow", wind: 40, glow: true }
   };
   (function load() {
     var o = null;
@@ -210,9 +227,9 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
     if (!o || typeof o !== "object") return;
     if (o.mode === "forest") o.mode = "rain";       // phones that last used the old Forest mode
     if (o.forest && !o.rain) o.rain = { pal: o.forest.pal, amount: o.forest.rain, glow: o.forest.glow };
-    if (o.mode === "fire" || o.mode === "water" || o.mode === "rain") S.mode = o.mode;
+    if (o.mode === "fire" || o.mode === "water" || o.mode === "rain" || o.mode === "grass") S.mode = o.mode;
     if (typeof o.awake === "boolean") S.awake = o.awake;
-    ["fire", "water", "rain"].forEach(function (sec) {
+    ["fire", "water", "rain", "grass"].forEach(function (sec) {
       var from = o[sec]; if (!from || typeof from !== "object") return;
       Object.keys(S[sec]).forEach(function (k) { if (typeof from[k] === typeof S[sec][k]) S[sec][k] = from[k]; });
       if (!PALS[sec][S[sec].pal]) S[sec].pal = Object.keys(PALS[sec])[0];
@@ -467,7 +484,69 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
       }
     }
   };
-  var SCENES = { fire: fire, water: water, rain: rain };
+  // ----- grass: blades and tall weeds seen from the side, bending in the wind -----
+  var gBlades = [], gGusts = [], gW = 0, gP = 0, gSheen = 0;
+  function gustAt(x) { if (gGusts.length < 6) gGusts.push({ x: x, age: 0 }); }
+  function grassPlant() {
+    var i, r = Math.random, count = Math.round(FW * 1.8), low = Math.round(FW * 0.9);
+    gBlades = [];
+    for (i = 0; i < count; i++) {                            // planted past the left edge, because the wind leans everything right
+      var weed = i % 8 === 0, leaves = [];
+      if (weed) for (var a = 0, n = 2 + ((r() * 3) | 0); a < n; a++) leaves.push({ u: 0.4 + 0.45 * (a + r() * 0.6) / n, side: a % 2 ? 1 : -1, len: 3 + r() * 3 });
+      gBlades.push({ x: -FW * 0.7 + r() * FW * 1.7, h: FH * (weed ? 0.46 + 0.16 * r() : 0.2 + 0.24 * r()), flex: weed ? 0.45 + 0.2 * r() : 0.7 + 0.35 * r(), v: weed ? 0.42 : 0.24 + 0.34 * r(), ph: r() * 6, weed: weed, leaves: leaves });
+    }
+    for (i = 0; i < low; i++) gBlades.push({ x: -FW * 0.2 + r() * FW * 1.2, h: 4 + r() * 5, flex: 0.5, v: 0.14 + 0.08 * r(), ph: r() * 6, weed: false, leaves: [] });
+  }
+  function grassDot(x, y, v) {                               // a soft dot, so blades glide between LEDs instead of jumping
+    var xi = Math.floor(x - 0.5), yi = Math.floor(y - 0.5), fx = Math.max(0, Math.min(1, (x - 0.5 - xi - 0.25) * 2)), fy = y - 0.5 - yi;
+    for (var b = 0; b < 2; b++) for (var a = 0; a < 2; a++) {
+      var cx = xi + a, cy = yi + b;
+      if (cx < 0 || cx >= FW || cy < 0 || cy >= FH) continue;
+      var c = v * Math.min(1, (a ? fx : 1 - fx) * (b ? fy : 1 - fy) * 1.5), o = cy * FW + cx;
+      if (c > vals[o]) vals[o] = c;
+    }
+  }
+  function grassLean(b) {                                    // steady push, plus waves of wind rolling left to right
+    var roll = 0.6 * Math.sin(b.x * 0.2 - gP) + 0.25 * Math.sin(b.x * 0.53 - gP * 1.7 + b.ph * 0.3);
+    var l = gW * 0.8 + (0.05 + 0.6 * gW) * (roll + 0.15 * Math.sin(gP * 3.1 + b.ph));
+    gGusts.forEach(function (g) { var d = (b.x - g.x - g.age * 16) / 5; l += 1.1 * Math.exp(-d * d) * (1 - g.age / 1.4); });
+    gSheen = Math.max(0, roll);
+    return l;
+  }
+  var grass = {
+    step: 16, slow: 200, glow: 0.6, lut: null,
+    init: function () { grassPlant(); gGusts.length = 0; gW = S.grass.wind / 100; gP = Math.random() * 20; },
+    tick: function (t, dt) {
+      gW += (S.grass.wind / 100 - gW) * Math.min(1, dt * 3);  // the wind eases to a new speed
+      gP += dt * (0.35 + 5.5 * gW);
+      for (var i = gGusts.length - 1; i >= 0; i--) { gGusts[i].age += dt; if (gGusts[i].age >= 1.4) gGusts.splice(i, 1); }
+    },
+    fill: function () {
+      var x, y;
+      for (y = 0; y < FH; y++) for (x = 0; x < FW; x++) vals[y * FW + x] = 0.03 + 0.05 * y / FH;
+      gBlades.forEach(function (b) {
+        var l = grassLean(b), sheen = gSheen * 0.1, sway = l * b.flex * b.h, tall = b.h * (1 - 0.32 * Math.min(1, l * l));
+        var n = Math.ceil(b.h * 2), j, u, px, py;
+        for (j = 1; j <= n; j++) {
+          u = j / n; px = b.x + sway * u * u; py = FH - tall * u;
+          grassDot(px, py, b.v * (0.3 + 0.95 * u) + sheen * u);
+        }
+        if (!b.weed) return;
+        grassDot(px, py, 0.95); grassDot(px + l * 0.6, py - 1, 0.8);   // the seed head
+        b.leaves.forEach(function (f) {
+          var sx = b.x + sway * f.u * f.u, sy = FH - tall * f.u, m = Math.ceil(f.len * 2);
+          for (j = 1; j <= m; j++) {
+            u = j / m;
+            grassDot(sx + (f.side * 0.8 + l * 0.7) * u * f.len, sy - 0.7 * u * f.len + 0.45 * u * u * f.len, 0.44);
+          }
+        });
+      });
+      for (x = 0; x < FW; x++) {                             // the ground
+        vals[(FH - 1) * FW + x] = Math.max(vals[(FH - 1) * FW + x], 0.2 + 0.06 * Math.sin(x * 1.7));
+      }
+    }
+  };
+  var SCENES = { fire: fire, water: water, rain: rain, grass: grass };
 
   // ---------- touch: tap or slide on the water or the wet ground ----------
   var spacer = $("spacer"), lastDrag = 0;
@@ -475,6 +554,7 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
     var r = stage.getBoundingClientRect();
     if (mode === "water") dropAt(Math.floor(e.clientX / r.width * FW));
     else if (mode === "rain") rainRing(e.clientX / r.width * FW, e.clientY / r.height * FH, 0.8);
+    else if (mode === "grass") gustAt(e.clientX / r.width * FW);
   }
   spacer.addEventListener("pointerdown", dropFromEvent);
   spacer.addEventListener("pointermove", function (e) {
@@ -482,8 +562,8 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
   });
 
   // ---------- scrolling ----------
-  // The sheet covers the bottom of the screen. Fire rides up with it so the base of the
-  // flame stays in view while you adjust it. Water stays put so the surface stays in view.
+  // The sheet covers the bottom of the screen. Fire and grass ride up with it so their
+  // base stays in view while you adjust them. Water stays put so the surface stays in view.
   var hint = $("hint"), hintTimer = 0;
   var sheet = document.querySelector(".sheet");
   function hintLater() { clearTimeout(hintTimer); hintTimer = setTimeout(function () { hint.classList.add("off"); }, 5000); }
@@ -491,7 +571,7 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
     var y = Math.max(0, window.scrollY || 0);
     sheet.classList.toggle("on", y > 2);
     var lift = y - 120;
-    stage.style.transform = mode === "fire" && lift > 0 ? "translate3d(0," + (-lift) + "px,0)" : "none";
+    stage.style.transform = (mode === "fire" || mode === "grass") && lift > 0 ? "translate3d(0," + (-lift) + "px,0)" : "none";
     if (y > 8) { hint.classList.add("off"); clearTimeout(hintTimer); hintTimer = 0; }
     else if (!hintTimer) { hint.classList.remove("off"); hintLater(); }
   }
@@ -504,14 +584,14 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
   }
   function setMode(m) {
     mode = S.mode = m;
-    ["fire", "water", "rain"].forEach(function (k) {
+    ["fire", "water", "rain", "grass"].forEach(function (k) {
       $("set-" + k).hidden = k !== m;
       $("m-" + k).setAttribute("aria-pressed", String(k === m));
     });
     setAccent(); start(SCENES[m]); moveStage();
     if (!reduced && cv.animate) cv.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 350, easing: "ease-out" });
   }
-  ["fire", "water", "rain"].forEach(function (m) {
+  ["fire", "water", "rain", "grass"].forEach(function (m) {
     $("m-" + m).addEventListener("click", function () { if (m !== mode) { setMode(m); save(); } });
   });
 
@@ -523,7 +603,7 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
     Array.prototype.forEach.call($("pals-" + sec).children, function (b) { b.setAttribute("aria-pressed", String(b.dataset.pal === S[sec].pal)); });
     if (sec === mode) setAccent();
   }
-  ["fire", "water", "rain"].forEach(function (sec) {
+  ["fire", "water", "rain", "grass"].forEach(function (sec) {
     Object.keys(PALS[sec]).forEach(function (k) {
       var b = document.createElement("button"), p = PALS[sec][k];
       b.type = "button"; b.id = sec + "-pal-" + k; b.className = "swatch"; b.dataset.pal = k;
@@ -546,6 +626,7 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
   bindToggle("water-bubbles", "water", "bubbles");
   bindToggle("water-glow", "water", "glow");
   bindToggle("rain-glow", "rain", "glow");
+  bindToggle("grass-glow", "grass", "glow");
 
   function bindSlider(id, sec, key) {
     var el = $(id), out = $("o-" + id);
@@ -559,6 +640,7 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
   bindSlider("fire-height", "fire", "height");
   bindSlider("water-swell", "water", "swell");
   bindSlider("rain-amount", "rain", "amount");
+  bindSlider("grass-wind", "grass", "wind");
 
   // ---------- keep the screen awake ----------
   var lock = null;
