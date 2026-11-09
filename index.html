@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+<title>Fire &amp; Water LED</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LED">
+<meta name="theme-color" content="#0b0204">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: the LED grid fills the whole phone screen and stays live behind the page.
+   A settings sheet sits below the first screen and scrolls up over it.
+   One committed dark look, because the grid is a light source. */
+:root {
+  color-scheme: dark;
+  --ground: #0b0204; --sheet: #1a1815; --raised: #272420; --line: #38342e;
+  --fg: #ece8df; --muted: #a39e93; --hint-bg: rgba(11, 2, 4, .62);
+  --accent: #e58a6c; --accent-fg: #161513;
+  --pixel: "Silkscreen", "Courier New", monospace;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+html { background: var(--ground); }
+body {
+  margin: 0; background: var(--ground); color: var(--fg);
+  font: 14px/1.45 var(--mono); touch-action: manipulation;
+  -webkit-text-size-adjust: 100%; -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* ---------- the LED screen ---------- */
+.stage {
+  position: fixed; left: 0; top: 0; z-index: 0; width: 100%;
+  height: 100vh; height: 100lvh; background: var(--ground); will-change: transform;
+}
+.stage canvas { display: block; width: 100%; height: 100%; }
+.app { position: relative; z-index: 1; }
+.spacer {
+  position: relative; touch-action: pan-y; cursor: pointer;
+  height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  height: calc(100svh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+}
+.hint {
+  position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px; white-space: nowrap;
+  padding: 7px 10px; border-radius: 6px; background: var(--hint-bg);
+  font: 400 11px/1 var(--pixel); letter-spacing: .08em; text-transform: uppercase;
+  transition: opacity .5s ease; pointer-events: none;
+}
+.hint.off { opacity: 0; }
+.hint svg { width: 10px; height: 10px; shape-rendering: crispEdges; }
+
+/* ---------- settings sheet ---------- */
+.sheet {
+  background: var(--sheet); border-radius: 18px 18px 0 0;
+  margin-bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.sheet-in {
+  max-width: 560px; margin: 0 auto; display: grid; gap: 18px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 10px 28px;
+}
+.grab { justify-self: center; width: 40px; height: 4px; border-radius: 2px; background: var(--line); }
+.set { display: grid; gap: 18px; }
+.group { display: grid; gap: 8px; min-width: 0; }
+h2, .cap {
+  margin: 0; font: 400 11px/1 var(--pixel); letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muted);
+}
+button {
+  font: 500 13px/1 var(--mono); color: var(--fg); background: var(--raised);
+  border: 1px solid var(--line); border-radius: 8px; cursor: pointer; margin: 0;
+  transition: background-color .2s ease, border-color .2s ease, color .2s ease, transform .12s ease;
+}
+button:active { transform: scale(.97); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.seg button { height: 48px; font: 700 14px/1 var(--pixel); letter-spacing: .06em; text-transform: uppercase; }
+.seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+
+.swatches { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.swatch { display: grid; gap: 8px; padding: 6px 6px 10px; }
+.swatch i { display: block; height: 30px; border-radius: 4px; }
+.swatch[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+.chips { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
+.chip { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 48px; padding: 0 12px; }
+.chip i { flex: none; width: 12px; height: 12px; border-radius: 3px; background: var(--line); transition: background-color .2s ease, box-shadow .2s ease; }
+.chip[aria-pressed="true"] i { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+
+.slide { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; }
+.slide output { font: 500 13px/1 var(--mono); font-variant-numeric: tabular-nums; }
+.slide input { grid-column: 1 / -1; }
+input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 40px; margin: 0; background: transparent; cursor: pointer; }
+input[type="range"]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--accent) var(--v, 50%), var(--line) 0); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; margin-top: -11px; border: 0; border-radius: 8px; background: var(--fg); }
+input[type="range"]::-moz-range-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--accent) var(--v, 50%), var(--line) 0); }
+input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; border-radius: 8px; background: var(--fg); }
+.note { margin: 0; font-size: 12px; color: var(--muted); }
+.note:empty { display: none; }
+@media (prefers-reduced-motion: reduce) { button, .hint, .chip i { transition: none; } }
+</style>
+</head>
+<body>
+<div class="stage" id="stage" aria-hidden="true"><canvas id="led"></canvas></div>
+
+<main class="app">
+  <div class="spacer" id="spacer" role="img" aria-label="LED animation">
+    <span class="hint" id="hint">Scroll for settings
+      <svg viewBox="0 0 5 3" aria-hidden="true"><path fill="currentColor" d="M0 0h1v1H0zM4 0h1v1H4zM1 1h1v1H1zM3 1h1v1H3zM2 2h1v1H2z"/></svg>
+    </span>
+  </div>
+
+  <section class="sheet" aria-label="Settings"><div class="sheet-in">
+    <div class="grab" aria-hidden="true"></div>
+
+    <div class="seg" role="group" aria-label="Animation">
+      <button type="button" id="m-fire" aria-pressed="true">Fire</button>
+      <button type="button" id="m-water" aria-pressed="false">Water</button>
+    </div>
+
+    <div class="set" id="set-fire">
+      <div class="group"><h2>Flame color</h2><div class="swatches" id="pals-fire"></div></div>
+      <label class="slide" for="fire-height"><span class="cap">Flame height</span><output id="o-fire-height">100%</output>
+        <input type="range" id="fire-height" min="50" max="150" step="5" value="100"></label>
+      <div class="chips">
+        <button type="button" class="chip" id="fire-embers" aria-pressed="true"><span>Embers</span><i></i></button>
+        <button type="button" class="chip" id="fire-glow" aria-pressed="true"><span>Glow</span><i></i></button>
+      </div>
+    </div>
+
+    <div class="set" id="set-water" hidden>
+      <div class="group"><h2>Water color</h2><div class="swatches" id="pals-water"></div></div>
+      <label class="slide" for="water-swell"><span class="cap">Swell</span><output id="o-water-swell">100%</output>
+        <input type="range" id="water-swell" min="0" max="150" step="5" value="100"></label>
+      <div class="chips">
+        <button type="button" class="chip" id="water-drops" aria-pressed="true"><span>Drops</span><i></i></button>
+        <button type="button" class="chip" id="water-bubbles" aria-pressed="true"><span>Bubbles</span><i></i></button>
+        <button type="button" class="chip" id="water-glow" aria-pressed="true"><span>Glow</span><i></i></button>
+      </div>
+      <p class="note">Tap the water to drop something in. Slide sideways to make it rain.</p>
+    </div>
+
+    <div class="chips">
+      <button type="button" class="chip" id="awake" aria-pressed="false"><span>Keep screen awake</span><i></i></button>
+    </div>
+    <p class="note" id="msg" role="status"></p>
+  </div></section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var GROUND = "#0b0204";
+  var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var PALS = {
+    fire: {
+      classic: { name: "Classic", accent: "#e58a6c", stops: [[0, 34, 4, 8], [.3, 110, 12, 14], [.55, 205, 40, 24], [.75, 255, 120, 60], [.9, 255, 205, 130], [1, 255, 246, 214]] },
+      blue: { name: "Blue", accent: "#5cb2ff", stops: [[0, 4, 6, 28], [.3, 14, 24, 110], [.55, 30, 90, 210], [.75, 80, 170, 255], [.9, 180, 225, 255], [1, 240, 250, 255]] },
+      green: { name: "Green", accent: "#82e65a", stops: [[0, 4, 22, 10], [.3, 10, 80, 30], [.55, 40, 170, 60], [.75, 130, 230, 90], [.9, 210, 255, 160], [1, 245, 255, 225]] }
+    },
+    water: {
+      ocean: { name: "Ocean", accent: "#3cb4e6", stops: [[0, 8, 14, 34], [.2, 8, 34, 90], [.45, 14, 88, 172], [.7, 40, 170, 226], [.88, 150, 226, 246], [1, 240, 252, 255]] },
+      teal: { name: "Lagoon", accent: "#3cd2aa", stops: [[0, 6, 20, 24], [.2, 8, 60, 66], [.45, 14, 130, 120], [.7, 60, 210, 170], [.88, 170, 245, 205], [1, 245, 255, 240]] },
+      violet: { name: "Dusk", accent: "#ee7890", stops: [[0, 14, 8, 32], [.2, 44, 20, 96], [.45, 110, 40, 150], [.7, 230, 100, 130], [.88, 255, 180, 130], [1, 255, 240, 214]] }
+    }
+  };
+
+  // ---------- saved settings (this phone only) ----------
+  var KEY = "fire-water-led-v1";
+  var S = {
+    mode: "fire", awake: false,
+    fire: { pal: "classic", height: 100, embers: true, glow: true },
+    water: { pal: "ocean", swell: 100, drops: true, bubbles: true, glow: true }
+  };
+  (function load() {
+    var o = null;
+    try { o = JSON.parse(localStorage.getItem(KEY)); } catch (_) {}
+    if (!o || typeof o !== "object") return;
+    if (o.mode === "fire" || o.mode === "water") S.mode = o.mode;
+    if (typeof o.awake === "boolean") S.awake = o.awake;
+    ["fire", "water"].forEach(function (sec) {
+      var from = o[sec]; if (!from || typeof from !== "object") return;
+      Object.keys(S[sec]).forEach(function (k) { if (typeof from[k] === typeof S[sec][k]) S[sec][k] = from[k]; });
+      if (!PALS[sec][S[sec].pal]) S[sec].pal = Object.keys(PALS[sec])[0];
+    });
+  })();
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (_) {} }
+
+  // ---------- the grid: square LEDs, 24 x 52 on an iPhone 13 held upright ----------
+  var stage = $("stage"), cv = $("led"), ctx = cv.getContext("2d");
+  var gcv = document.createElement("canvas"), gctx = gcv.getContext("2d");
+  var scv = document.createElement("canvas"), sctx = scv.getContext("2d");
+  var FW = 24, FH = 52, N = FW * FH, PX = 33, GAP = 3, SIZE = 27, RAD = 6;
+  var vals, head = new Int32Array(64), next, fa, fb, wh, wv, ws, BASE;
+  var mode = S.mode, scene = null, fxT = 0, fxRaf = 0, fxStep = 60;
+
+  function allocate() {
+    N = FW * FH;
+    vals = new Float32Array(N); next = new Int32Array(N);
+    fa = new Float32Array(FW * (FH + 1)); fb = new Float32Array(FW * (FH + 1));
+    wh = new Float32Array(FW); wv = new Float32Array(FW); ws = new Float32Array(FW);
+    BASE = FH * 0.3;
+    cv.width = FW * PX; cv.height = FH * PX;
+    gcv.width = FW; gcv.height = FH;
+    scv.width = FW * 4; scv.height = FH * 4;
+  }
+  function measure() {
+    var r = stage.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) return;
+    var cell = Math.max(16.25, Math.max(r.width, r.height) / 72);
+    var w = Math.max(8, Math.round(r.width / cell)), h = Math.max(8, Math.round(r.height / cell));
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);   // 2x is sharp enough and easier on the battery
+    var p = Math.max(6, Math.round(cell * dpr));
+    if (w === FW && h === FH && p === PX && vals) return;
+    FW = w; FH = h; PX = p;
+    GAP = Math.max(1, Math.round(PX * 0.083)); SIZE = PX - 2 * GAP; RAD = PX * 0.2;
+    allocate();
+    if (scene) { scene.init(); fxT = performance.now(); }
+  }
+
+  function lutFrom(st) {
+    var out = [];
+    for (var i = 0; i < 64; i++) {
+      var v = i / 63, k = 1;
+      while (k < st.length - 1 && st[k][0] < v) k++;
+      var lo = st[k - 1], hi = st[k], u = (v - lo[0]) / (hi[0] - lo[0]);
+      out.push("rgb(" + [1, 2, 3].map(function (j) { return Math.round(lo[j] + (hi[j] - lo[j]) * u); }).join(",") + ")");
+    }
+    return out;
+  }
+
+  function drawGrid(s) {
+    var W = cv.width, H = cv.height, lut = s.lut, i, k, v;
+    var glowOn = S[mode].glow, min = Math.ceil(s.glow * 63);
+    head.fill(-1);
+    for (i = N - 1; i >= 0; i--) {                  // group LEDs by color so each color is one fill
+      v = vals[i]; k = ((v < 0 ? 0 : v > 1 ? 1 : v) * 63) | 0;
+      next[i] = head[k]; head[k] = i;
+    }
+    ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
+    ctx.fillStyle = GROUND; ctx.fillRect(0, 0, W, H);
+    if (glowOn) gctx.clearRect(0, 0, FW, FH);
+    for (k = 0; k < 64; k++) {
+      if (head[k] < 0) continue;
+      var lit = glowOn && k >= min;
+      ctx.fillStyle = lut[k]; ctx.beginPath();
+      if (lit) gctx.fillStyle = lut[k];
+      for (i = head[k]; i >= 0; i = next[i]) {
+        var x = i % FW, y = (i / FW) | 0;
+        if (ctx.roundRect) ctx.roundRect(x * PX + GAP, y * PX + GAP, SIZE, SIZE, RAD);
+        else ctx.rect(x * PX + GAP, y * PX + GAP, SIZE, SIZE);
+        if (lit) gctx.fillRect(x, y, 1, 1);
+      }
+      ctx.fill();
+    }
+    if (glowOn) {                                   // soft halo from a tiny copy, scaled up in two steps
+      var sw = scv.width, sh = scv.height;
+      sctx.clearRect(0, 0, sw, sh);
+      sctx.globalAlpha = 1; sctx.drawImage(gcv, 0, 0, sw, sh);
+      sctx.globalAlpha = 0.35;
+      sctx.drawImage(gcv, -4, 0, sw, sh); sctx.drawImage(gcv, 4, 0, sw, sh);
+      sctx.drawImage(gcv, 0, -4, sw, sh); sctx.drawImage(gcv, 0, 4, sw, sh);
+      ctx.globalCompositeOperation = "screen"; ctx.globalAlpha = 0.8;
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(scv, 0, 0, W, H);
+    }
+  }
+
+  function loop(ts) {
+    if (!scene) { fxRaf = 0; return; }
+    var d = ts - fxT, n = 0;
+    while (d >= fxStep && n < 6) { scene.tick(ts, fxStep / 1000); fxT += fxStep; d -= fxStep; n++; }
+    if (d >= fxStep) { fxT = ts; d = 0; }
+    scene.fill(reduced ? 1 : d / fxStep);
+    drawGrid(scene);
+    fxRaf = requestAnimationFrame(loop);
+  }
+  function start(s) {
+    scene = s; fxStep = reduced ? s.slow : s.step; s.init();
+    fxT = performance.now();
+    if (!fxRaf) fxRaf = requestAnimationFrame(loop);
+  }
+
+  // ----- fire -----
+  var embers = [];
+  function fireStep(t) {
+    fa.set(fb);
+    var power = S.fire.height / 100;
+    var breath = 0.88 + 0.12 * Math.sin(t / 900), decay = 2.3 / FH / power, x, y;
+    var mid = (FW - 1) / 2, wide = FW * 0.27, sway = FW * 0.09;
+    for (x = 0; x < FW; x++) {                      // the fuel row: one main flame with smaller tongues beside it
+      var n = 0.5 + 0.5 * Math.sin(x * 0.62 + t / 430) * Math.sin(x * 0.23 - t / 1100);
+      var bell = Math.exp(-Math.pow((x - mid + sway * Math.sin(t / 1700)) / wide, 2));
+      fb[FH * FW + x] = Math.min(1, (0.2 + 0.55 * bell + 0.25 * n * (0.4 + bell) + Math.random() * 0.12) * 1.25 * breath * Math.min(1.15, power));
+    }
+    for (y = 0; y < FH; y++) for (x = 0; x < FW; x++) {
+      var sx = x + ((Math.random() * 3) | 0) - 1; sx = sx < 0 ? 0 : sx >= FW ? FW - 1 : sx;
+      var v = fb[(y + 1) * FW + sx] - Math.random() * decay;
+      fb[y * FW + x] = v > 0 ? v : 0;
+    }
+    if (S.fire.embers) {                            // a spark now and then, rising out of the flame
+      var edge = FW * 0.19;
+      if (embers.length < 6 && Math.random() < 0.12) embers.push({ x: edge + Math.random() * (FW - 2 * edge), y: FH * (0.4 + Math.random() * 0.35), s: 0.3 + Math.random() * 0.35 });
+      for (var i = embers.length - 1; i >= 0; i--) {
+        var e = embers[i]; e.y -= e.s; e.x += (Math.random() - 0.5) * 0.7;
+        if (Math.round(e.y) < 0 || Math.round(e.x) < 0 || Math.round(e.x) >= FW) embers.splice(i, 1);
+      }
+    } else embers.length = 0;
+  }
+  var fire = {
+    step: 50, slow: 300, glow: 0.42, lut: null,
+    init: function () {
+      fb.fill(0); fa.fill(0); embers.length = 0;
+      var t0 = performance.now(), steps = Math.round(FH * 1.6);
+      for (var i = 0; i < steps; i++) fireStep(t0 - (steps - i) * 50);
+    },
+    tick: function (t) { fireStep(t); },
+    fill: function (al) {
+      for (var i = 0; i < N; i++) { var v = fa[i] + (fb[i] - fa[i]) * al; vals[i] = Math.pow(v < 0 ? 0 : v > 1 ? 1 : v, 0.9); }
+      embers.forEach(function (e) {                 // sparks sit on top of the flame so they leave no trail
+        var cx = Math.round(e.x), cy = Math.round(e.y);
+        if (cy >= 0 && cy < FH && cx >= 0 && cx < FW) vals[cy * FW + cx] = Math.max(vals[cy * FW + cx], 0.97);
+      });
+    }
+  };
+
+  // ----- water: a rolling surface (a row of springs), falling drops, rising bubbles -----
+  var drops = [], bubbles = [], tw = 0, nextDrop = 0;
+  function surfCalc() {
+    var amp = S.water.swell / 100;
+    for (var x = 0; x < FW; x++) ws[x] = BASE + amp * (1.2 * Math.sin(x * 0.35 - tw * 1.3) + 0.7 * Math.sin(x * 0.17 + tw * 0.7)) + wh[x];
+  }
+  function dropAt(x) { if (drops.length < 8) drops.push({ x: Math.max(1, Math.min(FW - 2, x)), y: -1, vy: 0 }); }
+  function splash(x) {
+    var xi = Math.round(x);
+    wv[xi] += 1.5; if (xi > 0) wv[xi - 1] += 0.7; if (xi < FW - 1) wv[xi + 1] += 0.7;
+    if (S.water.bubbles) for (var i = 0; i < 3; i++) if (bubbles.length < 20) bubbles.push({ x: xi + (Math.random() - 0.5) * 3, y: ws[xi] + 1.5, vy: -0.05 - Math.random() * 0.05, ph: Math.random() * 6, life: 70 + Math.random() * 60 });
+  }
+  var water = {
+    step: 16, slow: 120, glow: 0.62, lut: null,
+    init: function () { wh.fill(0); wv.fill(0); drops.length = 0; bubbles.length = 0; tw = 0; nextDrop = 500; surfCalc(); },
+    tick: function (t, dt) {
+      var k = dt / 0.016, x, i;
+      tw += dt;
+      for (x = 0; x < FW; x++) { var l = wh[x > 0 ? x - 1 : x], r = wh[x < FW - 1 ? x + 1 : x]; wv[x] += ((l + r - 2 * wh[x]) * 0.25 - wh[x] * 0.01) * k; }
+      for (x = 0; x < FW; x++) { wv[x] *= Math.pow(0.99, k); wh[x] = Math.max(-4, Math.min(4, wh[x] + wv[x] * k)); }
+      surfCalc();
+      if (S.water.drops) { nextDrop -= dt * 1000; if (nextDrop <= 0) { dropAt(2 + Math.random() * (FW - 4)); nextDrop = 900 + Math.random() * 2200; } }
+      for (i = drops.length - 1; i >= 0; i--) {
+        var d = drops[i]; d.vy += 0.0038 * k; d.y += d.vy * k;
+        if (d.y >= ws[Math.round(d.x)] - 0.2) { splash(d.x); drops.splice(i, 1); }
+      }
+      if (S.water.bubbles && bubbles.length < 14 && Math.random() < 0.02 * k) bubbles.push({ x: 1 + Math.random() * (FW - 2), y: FH - 0.5, vy: 0.05 + Math.random() * 0.06, ph: Math.random() * 6 });
+      for (i = bubbles.length - 1; i >= 0; i--) {
+        var b = bubbles[i]; b.y -= b.vy * k; b.ph += 0.15 * k;
+        if (b.life !== undefined) { b.life -= k; if (b.life <= 0) { bubbles.splice(i, 1); continue; } }   // splash bubbles sink a little, then fade
+        if (b.y < ws[Math.max(0, Math.min(FW - 1, Math.round(b.x)))] - 0.3) bubbles.splice(i, 1);
+      }
+      if (!S.water.bubbles) bubbles.length = 0;
+    },
+    fill: function () {
+      var x, y, deep = Math.max(1, FH - BASE);
+      for (x = 0; x < FW; x++) {
+        var s = ws[x], slope = Math.min(1, Math.abs(ws[Math.min(FW - 1, x + 1)] - ws[Math.max(0, x - 1)]) * 0.6);
+        for (y = 0; y < FH; y++) {
+          var depth = y + 0.5 - s, c = Math.max(0, Math.min(1, y + 1 - s));
+          var body = c > 0 ? 0.52 - Math.min(1, Math.max(0, depth) / deep) * 0.38 + 0.05 * Math.sin(x * 1.3 + y * 0.9 + tw * 2.2) : 0.02;
+          var crest = Math.exp(-(depth * depth) / 0.7) * (0.55 + 0.45 * slope);
+          vals[y * FW + x] = body * c + 0.02 * (1 - c) + crest * 0.5;
+        }
+      }
+      drops.forEach(function (d) {
+        var cx = Math.round(d.x), cy = Math.round(d.y);
+        if (cy >= 0 && cy < FH) vals[cy * FW + cx] = Math.max(vals[cy * FW + cx], 0.95);
+        if (cy - 1 >= 0 && cy - 1 < FH) vals[(cy - 1) * FW + cx] = Math.max(vals[(cy - 1) * FW + cx], 0.5);
+      });
+      bubbles.forEach(function (b) {
+        var cx = Math.round(b.x + 0.4 * Math.sin(b.ph)), cy = Math.round(b.y);
+        if (cx >= 0 && cx < FW && cy >= 0 && cy < FH) vals[cy * FW + cx] = Math.max(vals[cy * FW + cx], 0.86);
+      });
+    }
+  };
+  var SCENES = { fire: fire, water: water };
+
+  // ---------- touch: tap or slide on the water ----------
+  var spacer = $("spacer"), lastDrag = 0;
+  function dropFromEvent(e) { dropAt(Math.floor(e.clientX / stage.getBoundingClientRect().width * FW)); }
+  spacer.addEventListener("pointerdown", function (e) { if (mode === "water") dropFromEvent(e); });
+  spacer.addEventListener("pointermove", function (e) {
+    if (mode === "water" && e.buttons && e.timeStamp - lastDrag > 110) { lastDrag = e.timeStamp; dropFromEvent(e); }
+  });
+
+  // ---------- scrolling ----------
+  // The sheet covers the bottom of the screen. Fire rides up with it so the base of the
+  // flame stays in view while you adjust it. Water stays put so the surface stays in view.
+  var hint = $("hint"), hintTimer = 0;
+  function hintLater() { clearTimeout(hintTimer); hintTimer = setTimeout(function () { hint.classList.add("off"); }, 5000); }
+  function moveStage() {
+    var y = Math.max(0, window.scrollY || 0);
+    stage.style.transform = mode === "fire" && y > 0 ? "translate3d(0," + (-y) + "px,0)" : "none";
+    if (y > 8) { hint.classList.add("off"); clearTimeout(hintTimer); hintTimer = 0; }
+    else if (!hintTimer) { hint.classList.remove("off"); hintLater(); }
+  }
+  window.addEventListener("scroll", moveStage, { passive: true });
+
+  // ---------- controls ----------
+  function setAccent() {
+    var root = document.documentElement.style;
+    root.setProperty("--accent", PALS[mode][S[mode].pal].accent);
+  }
+  function setMode(m) {
+    mode = S.mode = m;
+    ["fire", "water"].forEach(function (k) {
+      $("set-" + k).hidden = k !== m;
+      $("m-" + k).setAttribute("aria-pressed", String(k === m));
+    });
+    setAccent(); start(SCENES[m]); moveStage();
+    if (!reduced && cv.animate) cv.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 350, easing: "ease-out" });
+  }
+  ["fire", "water"].forEach(function (m) {
+    $("m-" + m).addEventListener("click", function () { if (m !== mode) { setMode(m); save(); } });
+  });
+
+  function grad(st) {
+    return "linear-gradient(90deg," + st.map(function (s) { return "rgb(" + s[1] + "," + s[2] + "," + s[3] + ") " + Math.round(s[0] * 100) + "%"; }).join(",") + ")";
+  }
+  function paintPal(sec) {
+    SCENES[sec].lut = lutFrom(PALS[sec][S[sec].pal].stops);
+    Array.prototype.forEach.call($("pals-" + sec).children, function (b) { b.setAttribute("aria-pressed", String(b.dataset.pal === S[sec].pal)); });
+    if (sec === mode) setAccent();
+  }
+  ["fire", "water"].forEach(function (sec) {
+    Object.keys(PALS[sec]).forEach(function (k) {
+      var b = document.createElement("button"), p = PALS[sec][k];
+      b.type = "button"; b.id = sec + "-pal-" + k; b.className = "swatch"; b.dataset.pal = k;
+      b.setAttribute("aria-pressed", "false");
+      b.innerHTML = '<i style="background:' + grad(p.stops) + '"></i><span>' + p.name + "</span>";
+      b.addEventListener("click", function () { S[sec].pal = k; paintPal(sec); save(); });
+      $("pals-" + sec).appendChild(b);
+    });
+    paintPal(sec);
+  });
+
+  function bindToggle(id, sec, key) {
+    var b = $(id);
+    b.setAttribute("aria-pressed", String(S[sec][key]));
+    b.addEventListener("click", function () { S[sec][key] = !S[sec][key]; b.setAttribute("aria-pressed", String(S[sec][key])); save(); });
+  }
+  bindToggle("fire-embers", "fire", "embers");
+  bindToggle("fire-glow", "fire", "glow");
+  bindToggle("water-drops", "water", "drops");
+  bindToggle("water-bubbles", "water", "bubbles");
+  bindToggle("water-glow", "water", "glow");
+
+  function bindSlider(id, sec, key) {
+    var el = $(id), out = $("o-" + id);
+    function show() {
+      out.textContent = el.value + "%";
+      el.style.setProperty("--v", ((el.value - el.min) / (el.max - el.min) * 100) + "%");
+    }
+    el.value = S[sec][key]; S[sec][key] = +el.value; show();
+    el.addEventListener("input", function () { S[sec][key] = +el.value; show(); save(); });
+  }
+  bindSlider("fire-height", "fire", "height");
+  bindSlider("water-swell", "water", "swell");
+
+  // ---------- keep the screen awake ----------
+  var lock = null;
+  function msg(s) { $("msg").textContent = s; }
+  function awakeUI(on) { $("awake").setAttribute("aria-pressed", String(on)); }
+  function wake(on, quiet) {
+    if (!on) { if (lock) { lock.release().catch(function () {}); lock = null; } awakeUI(false); msg(""); return; }
+    function fail() {
+      awakeUI(false);
+      if (!quiet) msg("This view can't keep the screen awake. On iPhone, open Settings, then Display & Brightness, and set Auto-Lock to Never.");
+    }
+    if (!navigator.wakeLock) { fail(); return; }
+    navigator.wakeLock.request("screen").then(function (l) {
+      lock = l; awakeUI(true); msg("");
+      l.addEventListener("release", function () { lock = null; });
+    }).catch(fail);
+  }
+  $("awake").addEventListener("click", function () {
+    var on = $("awake").getAttribute("aria-pressed") !== "true";
+    S.awake = on; save(); wake(on, false);
+  });
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible" && S.awake && !lock) wake(true, true);
+  });
+  if (S.awake) wake(true, true);
+
+  // ---------- start ----------
+  measure();
+  if (!vals) allocate();
+  if (window.ResizeObserver) new ResizeObserver(measure).observe(stage);
+  window.addEventListener("resize", measure);
+  setMode(mode);
+  hintLater();
+})();
+</script>
+</body>
+</html>
