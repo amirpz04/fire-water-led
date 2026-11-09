@@ -128,7 +128,7 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
     <div class="seg" role="group" aria-label="Animation">
       <button type="button" id="m-fire" aria-pressed="true">Fire</button>
       <button type="button" id="m-water" aria-pressed="false">Water</button>
-      <button type="button" id="m-forest" aria-pressed="false">Forest</button>
+      <button type="button" id="m-rain" aria-pressed="false">Rain</button>
     </div>
 
     <div class="set" id="set-fire">
@@ -153,26 +153,21 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
       <p class="note">Tap the water to drop something in. Slide sideways to make it rain.</p>
     </div>
 
-    <div class="set" id="set-forest" hidden>
-      <div class="group"><h2>Forest color</h2><div class="swatches" id="pals-forest"></div></div>
-      <label class="slide" for="forest-rain"><span class="cap">Rainfall</span><output id="o-forest-rain">100%</output>
-        <input type="range" id="forest-rain" min="0" max="150" step="5" value="100"></label>
+    <div class="set" id="set-rain" hidden>
+      <div class="group"><h2>Rain color</h2><div class="swatches" id="pals-rain"></div></div>
+      <label class="slide" for="rain-amount"><span class="cap">Rainfall</span><output id="o-rain-amount">100%</output>
+        <input type="range" id="rain-amount" min="0" max="150" step="5" value="100"></label>
       <div class="chips">
-        <button type="button" class="chip" id="forest-mist" aria-pressed="true"><span>Mist</span><i></i></button>
-        <button type="button" class="chip" id="forest-flies" aria-pressed="true"><span>Fireflies</span><i></i></button>
+        <button type="button" class="chip" id="rain-glow" aria-pressed="true"><span>Glow</span><i></i></button>
       </div>
-      <div class="chips">
-        <button type="button" class="chip" id="forest-thunder" aria-pressed="true"><span>Lightning</span><i></i></button>
-        <button type="button" class="chip" id="forest-glow" aria-pressed="true"><span>Glow</span><i></i></button>
-      </div>
-      <p class="note">Tap the screen to call a lightning strike.</p>
+      <p class="note">Tap the ground to make a ripple. Slide to make more.</p>
     </div>
 
     <div class="chips">
       <button type="button" class="chip" id="awake" aria-pressed="false"><span>Keep screen awake</span><i></i></button>
     </div>
     <p class="note" id="msg" role="status"></p>
-    <p class="note">Version 8</p>
+    <p class="note">Version 9</p>
   </div></section>
 </main>
 
@@ -194,10 +189,10 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
       teal: { name: "Lagoon", accent: "#3cd2aa", stops: [[0, 6, 20, 24], [.2, 8, 60, 66], [.45, 14, 130, 120], [.7, 60, 210, 170], [.88, 170, 245, 205], [1, 245, 255, 240]] },
       violet: { name: "Dusk", accent: "#ee7890", stops: [[0, 14, 8, 32], [.2, 44, 20, 96], [.45, 110, 40, 150], [.7, 230, 100, 130], [.88, 255, 180, 130], [1, 255, 240, 214]] }
     },
-    forest: {
-      jungle: { name: "Jungle", accent: "#6fd45a", stops: [[0, 2, 10, 6], [.2, 6, 40, 18], [.4, 18, 100, 40], [.6, 60, 170, 60], [.8, 150, 225, 110], [1, 235, 255, 215]] },
+    rain: {
+      puddle: { name: "Puddle", accent: "#7fb2e0", stops: [[0, 3, 6, 14], [.2, 10, 24, 48], [.4, 26, 62, 104], [.6, 70, 130, 180], [.8, 165, 210, 235], [1, 245, 252, 255]] },
       monsoon: { name: "Monsoon", accent: "#7ccbc4", stops: [[0, 4, 8, 16], [.2, 10, 30, 50], [.4, 24, 70, 84], [.6, 60, 130, 130], [.8, 150, 200, 190], [1, 240, 252, 250]] },
-      golden: { name: "Golden", accent: "#e6b44c", stops: [[0, 10, 6, 4], [.2, 30, 34, 10], [.4, 70, 88, 20], [.6, 150, 150, 40], [.8, 235, 190, 90], [1, 255, 244, 200]] }
+      street: { name: "Streetlight", accent: "#e6b44c", stops: [[0, 8, 5, 4], [.2, 42, 24, 10], [.4, 112, 66, 18], [.6, 190, 124, 36], [.8, 245, 196, 104], [1, 255, 246, 214]] }
     }
   };
 
@@ -207,15 +202,17 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
     mode: "fire", awake: false,
     fire: { pal: "classic", height: 100, embers: true, glow: true },
     water: { pal: "ocean", swell: 100, drops: true, bubbles: true, glow: true },
-    forest: { pal: "jungle", rain: 100, mist: true, flies: true, thunder: true, glow: true }
+    rain: { pal: "puddle", amount: 100, glow: true }
   };
   (function load() {
     var o = null;
     try { o = JSON.parse(localStorage.getItem(KEY)); } catch (_) {}
     if (!o || typeof o !== "object") return;
-    if (o.mode === "fire" || o.mode === "water" || o.mode === "forest") S.mode = o.mode;
+    if (o.mode === "forest") o.mode = "rain";       // phones that last used the old Forest mode
+    if (o.forest && !o.rain) o.rain = { pal: o.forest.pal, amount: o.forest.rain, glow: o.forest.glow };
+    if (o.mode === "fire" || o.mode === "water" || o.mode === "rain") S.mode = o.mode;
     if (typeof o.awake === "boolean") S.awake = o.awake;
-    ["fire", "water", "forest"].forEach(function (sec) {
+    ["fire", "water", "rain"].forEach(function (sec) {
       var from = o[sec]; if (!from || typeof from !== "object") return;
       Object.keys(S[sec]).forEach(function (k) { if (typeof from[k] === typeof S[sec][k]) S[sec][k] = from[k]; });
       if (!PALS[sec][S[sec].pal]) S[sec].pal = Object.keys(PALS[sec])[0];
@@ -418,105 +415,70 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
     }
   };
 
-  // ----- forest: rain through a canopy, hanging vines, mist, fireflies, lightning -----
-  var fCan, fGnd, fTrees = [], fRain = [], fSpl = [], fFlies = [], fFlash = 0, fRe = 0, fBolt = 8, fT = 0, fAcc = 0;
-  function forestTick(dt) {
-    var i, x, f = S.forest.rain / 100;
-    fT += dt;
-    fAcc += FW * 0.7 * f * dt;
-    while (fAcc >= 1) { fAcc--; fRain.push({ x: Math.random() * (FW + 6) - 3, y: -Math.random() * 4, vy: 0.7 + Math.random() * 0.5, len: 2 + ((Math.random() * 3) | 0) }); }
-    for (i = fRain.length - 1; i >= 0; i--) {
-      var d = fRain[i]; d.y += d.vy; d.x += d.vy * 0.12;
-      var gx = Math.max(0, Math.min(FW - 1, Math.round(d.x))), gy = FH - fGnd[gx];
-      if (d.y >= gy) { if (d.x >= 0 && d.x < FW) fSpl.push({ x: d.x, y: gy, age: 0 }); fRain.splice(i, 1); }
-      else if (d.x > FW + 2) fRain.splice(i, 1);
+  // ----- rain: looking down at wet ground, each drop lands and spreads circular ripples -----
+  var R_FALL = 0.2, R_LIFE = 1.7, R_SPEED = 7.5, R_WAVE = 3.6, R_SOFT = 4.5, R_RATE = 0.0045;   // seconds, cells per second, cells
+  var rDrops = [], rRings = [], rAcc = 0, rT = 0;
+  function rainRing(x, y, amp) { if (rRings.length < 60) rRings.push({ x: x, y: y, age: 0, amp: amp }); }
+  function rainTick(dt) {
+    var i;
+    rT += dt;
+    rAcc += N * R_RATE * (S.rain.amount / 100) * dt;
+    while (rAcc >= 1) { rAcc--; rDrops.push({ x: Math.random() * FW, y: Math.random() * FH, age: 0, amp: 0.45 + Math.random() * 0.25 }); }
+    for (i = rDrops.length - 1; i >= 0; i--) {
+      var d = rDrops[i]; d.age += dt;
+      if (d.age >= R_FALL) { rainRing(d.x, d.y, d.amp); rDrops.splice(i, 1); }
     }
-    for (i = fSpl.length - 1; i >= 0; i--) { if (++fSpl[i].age > 4) fSpl.splice(i, 1); }
-    if (S.forest.thunder) {
-      fBolt -= dt;
-      if (fBolt <= 0) { fFlash = 1; fRe = Math.random() < 0.6 ? 1 : 0; fBolt = 7 + Math.random() * 12; }
-    }
-    fFlash *= Math.pow(0.8, dt / 0.03);
-    if (fRe && fFlash < 0.3) { fFlash = 0.85; fRe = 0; }
-    if (!S.forest.flies) fFlies.length = 0;
-    else {
-      while (fFlies.length < 7) fFlies.push({ x: Math.random() * FW, y: FH * (0.45 + Math.random() * 0.45), a: Math.random() * 6, b: Math.random() * 6, ph: Math.random() * 6 });
-      fFlies.forEach(function (q) {
-        q.a += 0.06; q.b += 0.045; q.x += 0.1 * Math.sin(q.a); q.y += 0.08 * Math.sin(q.b);
-        if (q.x < 0) q.x += FW; if (q.x >= FW) q.x -= FW;
-        q.y = Math.max(FH * 0.4, Math.min(FH - 3, q.y));
-      });
-    }
+    for (i = rRings.length - 1; i >= 0; i--) { rRings[i].age += dt; if (rRings[i].age >= R_LIFE) rRings.splice(i, 1); }
   }
-  var forest = {
-    step: 30, slow: 200, glow: 0.55, lut: null,
+  var rain = {
+    step: 16, slow: 200, glow: 0.5, lut: null,
     init: function () {
-      var x, i;
-      fCan = new Float32Array(FW); fGnd = new Float32Array(FW); fTrees = [];
-      for (x = 0; x < FW; x++) {
-        fCan[x] = FH * 0.12 + FH * 0.09 * (0.5 + 0.5 * Math.sin(x * 0.9 + 1) * Math.sin(x * 0.37)) + Math.random() * 2;
-        fGnd[x] = 2 + 2.5 * (0.5 + 0.5 * Math.sin(x * 1.1 + 2)) + Math.random() * 1.5;
-      }
-      for (x = 1 + ((Math.random() * 2) | 0); x < FW - 1; x += 3 + ((Math.random() * 3) | 0))
-        fTrees.push({ x: x, w: Math.random() < 0.4 ? 2 : 1, ph: Math.random() * 6, v: 0.22 + Math.random() * 0.08 });
-      fRain.length = 0; fSpl.length = 0; fFlies.length = 0; fFlash = 0; fRe = 0; fT = 0; fAcc = 0; fBolt = 6 + Math.random() * 8;
-      for (i = 0; i < 70; i++) forestTick(0.03);
+      rDrops.length = 0; rRings.length = 0; rAcc = 0; rT = 0;
+      for (var i = 0; i < 110; i++) rainTick(0.016);
     },
-    tick: function (t, dt) { forestTick(dt); },
+    tick: function (t, dt) { rainTick(dt); },
     fill: function () {
-      var x, y, i, k, o, cx, cy, mist = S.forest.mist;
-      for (x = 0; x < FW; x++) {
-        var cd = fCan[x] + 1.3 * Math.sin(x * 0.5 + fT * 0.9), gd = FH - fGnd[x] + 0.8 * Math.sin(x * 0.8 + fT * 1.3);
-        for (y = 0; y < FH; y++) {
-          var v = 0.05 + 0.05 * y / FH;
-          if (y < cd) { v = 0.36 + 0.16 * Math.sin(x * 1.7 + y * 1.3 + fT * 1.4); if (y > cd - 1.2) v += 0.1; }
-          else if (y > gd) { v = 0.36 + 0.14 * Math.sin(x * 2.1 + y * 0.9 + fT * 1.1); if (y < gd + 1.2) v += 0.1; }
-          else if (mist) v += 0.1 * (0.5 + 0.5 * Math.sin(x * 0.35 - fT * 0.45 + y * 0.22)) * Math.max(0, (y / FH - 0.5) * 2);
-          vals[y * FW + x] = v;
+      var x, y, i, k, o, cx, cy, TAU = Math.PI * 2;
+      for (y = 0; y < FH; y++) for (x = 0; x < FW; x++)      // the wet ground, with a slow sheen
+        vals[y * FW + x] = 0.11 + 0.035 * Math.sin(x * 0.31 + y * 0.17 + rT * 0.35) * Math.sin(y * 0.23 - x * 0.12 - rT * 0.22);
+      rRings.forEach(function (r) {                          // waves add up, so crossing ripples interfere
+        var front = r.age * R_SPEED, left = 1 - r.age / R_LIFE, amp = r.amp * left * left;
+        var reach = Math.ceil(front + 2);
+        var y0 = Math.max(0, Math.floor(r.y - reach)), y1 = Math.min(FH - 1, Math.ceil(r.y + reach));
+        var x0 = Math.max(0, Math.floor(r.x - reach)), x1 = Math.min(FW - 1, Math.ceil(r.x + reach));
+        for (var py = y0; py <= y1; py++) for (var px = x0; px <= x1; px++) {
+          var dx = px + 0.5 - r.x, dy = py + 0.5 - r.y;
+          var behind = front - Math.sqrt(dx * dx + dy * dy);
+          if (behind < -1.5 || behind > R_SOFT * 2) continue;
+          var soft = behind < 0 ? 1.1 : R_SOFT;
+          vals[py * FW + px] += amp * Math.exp(-(behind * behind) / (soft * soft)) * Math.cos(TAU * behind / R_WAVE);
+        }
+        if (r.age < 0.14) {                                  // the moment of impact
+          cx = Math.floor(r.x); cy = Math.floor(r.y);
+          if (cx >= 0 && cx < FW && cy >= 0 && cy < FH) vals[cy * FW + cx] += 0.9 * (1 - r.age / 0.14);
+        }
+      });
+      for (i = 0; i < rDrops.length; i++) {                  // the drop itself, the last moment before it lands
+        var d = rDrops[i], head = d.y - (1 - d.age / R_FALL) * 9;
+        for (k = 0; k < 3; k++) {
+          cx = Math.floor(d.x); cy = Math.floor(head - k);
+          if (cx >= 0 && cx < FW && cy >= 0 && cy < FH) { o = cy * FW + cx; vals[o] = Math.max(vals[o], 0.8 - k * 0.25); }
         }
       }
-      fTrees.forEach(function (t) {
-        var c, tx, y2, vx;
-        for (c = 0; c < t.w; c++) {
-          tx = t.x + c;
-          var top = Math.ceil(fCan[tx] + 1.3), bot = Math.floor(FH - fGnd[tx]);
-          for (y2 = top; y2 < bot; y2++) vals[y2 * FW + tx] = t.v + 0.06 * Math.sin(y2 * 0.8 + t.ph + c * 2) + (c === 0 && t.w === 2 ? 0.06 : 0);
-        }
-        var vtop = Math.ceil(fCan[t.x] + 1.3), len = Math.round(FH * 0.35);
-        for (y2 = vtop; y2 < vtop + len && y2 < FH; y2++) {
-          vx = t.x - 1 + Math.round(0.7 * Math.sin(fT * 0.8 + y2 * 0.18 + t.ph));
-          if (vx >= 0 && vx < FW) vals[y2 * FW + vx] = 0.34 + 0.08 * Math.sin(y2 * 1.2);
-        }
-      });
-      fRain.forEach(function (d) {
-        for (k = 0; k < d.len; k++) {
-          cy = Math.round(d.y - k); cx = Math.round(d.x - k * 0.12);
-          if (cy >= 0 && cy < FH && cx >= 0 && cx < FW) { o = cy * FW + cx; vals[o] = Math.max(vals[o], k === 0 ? 0.78 : 0.5 - k * 0.1); }
-        }
-      });
-      fSpl.forEach(function (q) {
-        var a = q.age, sy = Math.round(q.y) - (a > 1 ? 2 : 1), sv = 0.9 - a * 0.2;
-        [-a, a].forEach(function (dx) {
-          var px = Math.round(q.x) + dx;
-          if (sy >= 0 && sy < FH && px >= 0 && px < FW) { o = sy * FW + px; vals[o] = Math.max(vals[o], sv); }
-        });
-      });
-      fFlies.forEach(function (q) {
-        var b = 0.5 + 0.5 * Math.sin(fT * 1.7 + q.ph);
-        cx = Math.round(q.x); cy = Math.round(q.y);
-        if (b > 0.3 && cx >= 0 && cx < FW && cy >= 0 && cy < FH) { o = cy * FW + cx; vals[o] = Math.max(vals[o], 0.55 + 0.43 * b); }
-      });
-      if (fFlash > 0.02) for (i = 0; i < N; i++) vals[i] = Math.min(1, vals[i] + fFlash * 0.4);
     }
   };
-  var SCENES = { fire: fire, water: water, forest: forest };
+  var SCENES = { fire: fire, water: water, rain: rain };
 
-  // ---------- touch: tap or slide on the water ----------
+  // ---------- touch: tap or slide on the water or the wet ground ----------
   var spacer = $("spacer"), lastDrag = 0;
-  function dropFromEvent(e) { dropAt(Math.floor(e.clientX / stage.getBoundingClientRect().width * FW)); }
-  spacer.addEventListener("pointerdown", function (e) { if (mode === "water") dropFromEvent(e); else if (mode === "forest") fFlash = 1; });
+  function dropFromEvent(e) {
+    var r = stage.getBoundingClientRect();
+    if (mode === "water") dropAt(Math.floor(e.clientX / r.width * FW));
+    else if (mode === "rain") rainRing(e.clientX / r.width * FW, e.clientY / r.height * FH, 0.8);
+  }
+  spacer.addEventListener("pointerdown", dropFromEvent);
   spacer.addEventListener("pointermove", function (e) {
-    if (mode === "water" && e.buttons && e.timeStamp - lastDrag > 110) { lastDrag = e.timeStamp; dropFromEvent(e); }
+    if (e.buttons && e.timeStamp - lastDrag > 110) { lastDrag = e.timeStamp; dropFromEvent(e); }
   });
 
   // ---------- scrolling ----------
@@ -542,14 +504,14 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
   }
   function setMode(m) {
     mode = S.mode = m;
-    ["fire", "water", "forest"].forEach(function (k) {
+    ["fire", "water", "rain"].forEach(function (k) {
       $("set-" + k).hidden = k !== m;
       $("m-" + k).setAttribute("aria-pressed", String(k === m));
     });
     setAccent(); start(SCENES[m]); moveStage();
     if (!reduced && cv.animate) cv.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 350, easing: "ease-out" });
   }
-  ["fire", "water", "forest"].forEach(function (m) {
+  ["fire", "water", "rain"].forEach(function (m) {
     $("m-" + m).addEventListener("click", function () { if (m !== mode) { setMode(m); save(); } });
   });
 
@@ -561,7 +523,7 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
     Array.prototype.forEach.call($("pals-" + sec).children, function (b) { b.setAttribute("aria-pressed", String(b.dataset.pal === S[sec].pal)); });
     if (sec === mode) setAccent();
   }
-  ["fire", "water", "forest"].forEach(function (sec) {
+  ["fire", "water", "rain"].forEach(function (sec) {
     Object.keys(PALS[sec]).forEach(function (k) {
       var b = document.createElement("button"), p = PALS[sec][k];
       b.type = "button"; b.id = sec + "-pal-" + k; b.className = "swatch"; b.dataset.pal = k;
@@ -583,10 +545,7 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
   bindToggle("water-drops", "water", "drops");
   bindToggle("water-bubbles", "water", "bubbles");
   bindToggle("water-glow", "water", "glow");
-  bindToggle("forest-mist", "forest", "mist");
-  bindToggle("forest-flies", "forest", "flies");
-  bindToggle("forest-thunder", "forest", "thunder");
-  bindToggle("forest-glow", "forest", "glow");
+  bindToggle("rain-glow", "rain", "glow");
 
   function bindSlider(id, sec, key) {
     var el = $(id), out = $("o-" + id);
@@ -599,7 +558,7 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
   }
   bindSlider("fire-height", "fire", "height");
   bindSlider("water-swell", "water", "swell");
-  bindSlider("forest-rain", "forest", "rain");
+  bindSlider("rain-amount", "rain", "amount");
 
   // ---------- keep the screen awake ----------
   var lock = null;
