@@ -156,7 +156,7 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
       <button type="button" class="chip" id="awake" aria-pressed="false"><span>Keep screen awake</span><i></i></button>
     </div>
     <p class="note" id="msg" role="status"></p>
-    <p class="note">Version 5</p>
+    <p class="note">Version 6</p>
   </div></section>
 </main>
 
@@ -414,7 +414,8 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
   function moveStage() {
     var y = Math.max(0, window.scrollY || 0);
     sheet.classList.toggle("on", y > 2);
-    stage.style.transform = mode === "fire" && y > 0 ? "translate3d(0," + (-y) + "px,0)" : "none";
+    var lift = y - 120;
+    stage.style.transform = mode === "fire" && lift > 0 ? "translate3d(0," + (-lift) + "px,0)" : "none";
     if (y > 8) { hint.classList.add("off"); clearTimeout(hintTimer); hintTimer = 0; }
     else if (!hintTimer) { hint.classList.remove("off"); hintLater(); }
   }
