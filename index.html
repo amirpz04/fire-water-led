@@ -6,7 +6,6 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-192.png">
-<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
 <title>Fire &amp; Water LED</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -45,11 +44,10 @@ body {
 .app { position: relative; z-index: 1; }
 .spacer {
   position: relative; touch-action: pan-y; cursor: pointer;
-  height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-  height: calc(100svh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  height: 100vh; height: 100lvh;
 }
 .hint {
-  position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+  position: absolute; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
   display: flex; align-items: center; gap: 8px; white-space: nowrap;
   padding: 7px 10px; border-radius: 6px; background: var(--hint-bg);
   font: 400 11px/1 var(--pixel); letter-spacing: .08em; text-transform: uppercase;
@@ -61,7 +59,6 @@ body {
 /* ---------- settings sheet ---------- */
 .sheet {
   background: var(--sheet); border-radius: 18px 18px 0 0;
-  margin-bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 .sheet-in {
