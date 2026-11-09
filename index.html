@@ -54,6 +54,8 @@ body {
   transition: opacity .5s ease; pointer-events: none;
 }
 .hint.off { opacity: 0; }
+.sheet { visibility: hidden; }
+.sheet.on { visibility: visible; }
 .hint svg { width: 10px; height: 10px; shape-rendering: crispEdges; }
 
 /* ---------- settings sheet ---------- */
@@ -405,9 +407,11 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; border: 0; bo
   // The sheet covers the bottom of the screen. Fire rides up with it so the base of the
   // flame stays in view while you adjust it. Water stays put so the surface stays in view.
   var hint = $("hint"), hintTimer = 0;
+  var sheet = document.querySelector(".sheet");
   function hintLater() { clearTimeout(hintTimer); hintTimer = setTimeout(function () { hint.classList.add("off"); }, 5000); }
   function moveStage() {
     var y = Math.max(0, window.scrollY || 0);
+    sheet.classList.toggle("on", y > 2);
     stage.style.transform = mode === "fire" && y > 0 ? "translate3d(0," + (-y) + "px,0)" : "none";
     if (y > 8) { hint.classList.add("off"); clearTimeout(hintTimer); hintTimer = 0; }
     else if (!hintTimer) { hint.classList.remove("off"); hintLater(); }
